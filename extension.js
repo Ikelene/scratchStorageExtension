@@ -6,6 +6,10 @@
             this.serverUrl = 'https://ikelene.dev/storage/';
             this.apiKey = null;
             this.maxDataSize = 262144;
+
+            this.editMode = 'live'; // 'live' or 'local'
+            this.localCache = {};   // { key: value }
+            this.dirtyKeys = new Set();
         }
 
         getInfo() {
@@ -43,6 +47,11 @@
                                 defaultValue: 'paste-your-api-key-here'
                             }
                         }
+                    },
+                    {
+                        opcode: 'getAllKeys',
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: 'get all stored keys'
                     },
                     {
                         opcode: 'saveToServer',
@@ -96,12 +105,47 @@
                         opcode: 'isServerWorking',
                         blockType: Scratch.BlockType.BOOLEAN,
                         text: 'is server working?'
+                    },
+                    {
+                        blockType: Scratch.BlockType.LABEL,
+                        text: 'Local Caching (Faster, but not live)'
+                    },
+                    {
+                        opcode: 'currentEditMode',
+                        blockType: Scratch.BlockType.REPORTER,
+                        text: 'current editing mode'
+                    },
+                    {
+                        opcode: 'setEditMode',
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: 'switch to [MODE] editing',
+                        arguments: {
+                            MODE: {
+                                type: Scratch.ArgumentType.STRING,
+                                menu: 'editModeMenu',
+                                defaultValue: 'live'
+                            }
+                        }
+                    },
+                    {
+                        opcode: 'downloadCache',
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: 'download all keys to local cache'
+                    },
+                    {
+                        opcode: 'pushCache',
+                        blockType: Scratch.BlockType.COMMAND,
+                        text: 'push local changes to server'
                     }
                 ],
                 menus: {
                     serverMenu: {
                         acceptReporters: true,
                         items: ['global']
+                    },
+                    editModeMenu: {
+                        acceptReporters: false,
+                        items: ['live', 'local']
                     }
                 }
             };
@@ -113,9 +157,7 @@
                 this.serverUrl = 'https://ikelene.dev/storage/';
             } else {
                 const trimmed = server.trim();
-                if (trimmed.length === 0) {
-                    return;
-                }
+                if (!trimmed.length) return;
                 this.serverUrl = trimmed.endsWith('/') ? trimmed : trimmed + '/';
             }
         }
@@ -126,6 +168,98 @@
 
         hasValidKey() {
             return this.apiKey && this.apiKey.length > 0;
+        }
+        
+        currentEditMode() {
+            return this.editMode;
+        }
+
+        setEditMode(args) {
+            const mode = args.MODE === 'local' ? 'local' : 'live';
+            this.editMode = mode;
+        }
+
+        async getAllKeys() {
+            if (!this.hasValidKey()) {
+                return 'need api key';
+            }
+            try {
+                const res = await fetch(this.serverUrl + 'listKeys.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ apiKey: this.apiKey })
+                });
+                if (!res.ok) return '[]';
+                const result = await res.json();
+                if (!result.success || !Array.isArray(result.keys)) return '[]';
+                return JSON.stringify(result.keys);
+            } catch (e) {
+                return '[]';
+            }
+        }
+
+        async downloadCache() {
+            if (!this.hasValidKey()) {
+                console.warn('need api key to download cache');
+                return;
+            }
+            try {
+                const res = await fetch(this.serverUrl + 'getAll.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ apiKey: this.apiKey })
+                });
+                if (!res.ok) return;
+                const result = await res.json();
+                if (!result.success || !Array.isArray(result.items)) return;
+
+                this.localCache = {};
+                this.dirtyKeys = new Set();
+
+                for (const item of result.items) {
+                    this.localCache[item.key] = item.value;
+                }
+            } catch (e) {}
+        }
+
+        async pushCache() {
+            if (!this.hasValidKey()) {
+                console.warn('need api key to push cache');
+                return;
+            }
+            const keysToPush = Array.from(this.dirtyKeys);
+            if (!keysToPush.length) return;
+
+            for (const key of keysToPush) {
+                const value = this.localCache[key];
+                if (typeof value === 'undefined') continue;
+
+                const payload = {
+                    apiKey: this.apiKey,
+                    key: key,
+                    value: value,
+                    mimeType: 'application/json'
+                };
+
+                try {
+                    await fetch(this.serverUrl + 'store.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                } catch (e) {}
+            }
+
+            this.dirtyKeys = new Set();
         }
 
         async saveToServer(args) {
@@ -139,6 +273,12 @@
             const size = new TextEncoder().encode(value).length;
 
             if (size > this.maxDataSize) {
+                return;
+            }
+
+            if (this.editMode === 'local') {
+                this.localCache[key] = value;
+                this.dirtyKeys.add(key);
                 return;
             }
 
@@ -175,6 +315,13 @@
 
             const key = args.KEY;
 
+            if (this.editMode === 'local') {
+                if (Object.prototype.hasOwnProperty.call(this.localCache, key)) {
+                    return this.localCache[key];
+                }
+                return '';
+            }
+
             try {
                 const response = await fetch(this.serverUrl + 'get.php', {
                     method: 'POST',
@@ -209,6 +356,10 @@
 
             const key = args.KEY;
 
+            if (this.editMode === 'local') {
+                return Object.prototype.hasOwnProperty.call(this.localCache, key);
+            }
+
             try {
                 const response = await fetch(this.serverUrl + 'get.php', {
                     method: 'POST',
@@ -240,6 +391,12 @@
             }
 
             const key = args.KEY;
+
+            if (this.editMode === 'local') {
+                delete this.localCache[key];
+                this.dirtyKeys.add(key); // optional: also push delete server-side later via dedicated delete api
+                return;
+            }
 
             try {
                 const response = await fetch(this.serverUrl + 'delete.php', {
