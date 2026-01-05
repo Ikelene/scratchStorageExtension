@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Storage Extension Docs</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 650px;
+            margin: 40px auto;
+            padding: 20px;
+            line-height: 1.6;
+            background: #f8f9fa;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        h1 { color: #2c3e50; margin-bottom: 10px; }
+        .subtitle { color: #7f8c8d; margin-bottom: 30px; }
+        .card {
+            background: #f6f6f6;
+            padding: 16px;
+            border-radius: 10px;
+            margin: 12px 0;
+            border: 1px solid #eaeaea;
+        }
+        .warning {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 18px;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        .warning strong { color: #856404; }
+        .pill {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid #e1e8ed;
+            background: #ffffff;
+            color: #2c3e50;
+        }
+        .pill.live { border-color: #b7e0ff; background: #eaf6ff; color: #1f5f88; }
+        .pill.local { border-color: #d7f7df; background: #ecfff1; color: #1f7a3f; }
+
+        .api-key {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 14px;
+            border-radius: 8px;
+            word-break: break-all;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 13px;
+            margin: 10px 0;
+            line-height: 1.4;
+        }
+        a { color: #3498db; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .btn {
+            display: inline-block;
+            padding: 12px 14px;
+            background: #3498db;
+            color: white;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .btn:hover { background: #2980b9; text-decoration: none; }
+        .section-title { margin-top: 34px; font-weight: 700; color: #2c3e50; }
+        ul { margin: 10px 0 0 18px; }
+        code {
+            background: #eef2f6;
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.95em;
+        }
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #95a5a6;
+            font-size: 14px;
+        }
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+        @media (min-width: 680px) {
+            .two-col { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Server Storage Extension</h1>
+        <div class="subtitle">
+            Store and retrieve key/value data from a Server Storage backend, with two editing modes for either live syncing or fast local caching.
+        </div>
+
+        <div class="warning">
+            <strong>Important:</strong><br>
+            Your API key grants access to all data stored under that key.<br>
+            If you lose or change it, your existing stored data may become inaccessible.
+        </div>
+
+        <div class="card">
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <a class="btn" id="apiKeyLink" href="./apiKey.html">Create / manage API key</a>
+                <span style="color:#7f8c8d; font-size:14px;">(opens <code>[currentURL]/apiKey.html</code>)</span>
+            </div>
+        </div>
+
+        <h2 class="section-title">API keys</h2>
+        <div class="card">
+            API keys identify your storage “account” on the server. Every request includes your key so the server knows which data belongs to you.
+            <div class="api-key">example: paste-your-api-key-here</div>
+            In PenguinMod, set it once using the extension’s <code>set API key to [APIKEY]</code> block.
+        </div>
+
+        <h2 class="section-title">Editing modes</h2>
+        <div class="two-col">
+            <div class="card">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                    <strong>Live</strong>
+                    <span class="pill live">live</span>
+                </div>
+                <div style="margin-top:10px;">
+                    Live mode talks to the server on every read/write:
+                    <ul>
+                        <li><code>save</code> sends immediately.</li>
+                        <li><code>get</code> fetches the latest server value.</li>
+                        <li><code>delete</code> deletes on the server immediately.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                    <strong>Local</strong>
+                    <span class="pill local">local</span>
+                </div>
+                <div style="margin-top:10px;">
+                    Local mode caches values in memory and avoids constant networking:
+                    <ul>
+                        <li><code>save</code> writes to local cache only.</li>
+                        <li><code>get</code> reads from local cache only.</li>
+                        <li>Nothing changes on the server until you push.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="section-title">Using local editing</h2>
+        <div class="card">
+            A simple recommended workflow:
+            <ul>
+                <li>Set your API key.</li>
+                <li>Switch to <code>local</code> editing.</li>
+                <li>Run <code>download all keys to local cache</code> to load the current server state into the cache.</li>
+                <li>Do lots of reads/writes locally while your project runs.</li>
+                <li>When ready, run <code>push local changes to server</code> to sync modified keys.</li>
+            </ul>
+        </div>
+
+        <h2 class="section-title">When to use which</h2>
+        <div class="card">
+            Use <span class="pill live">live</span> if you need the latest shared values immediately (for example, multiple users/projects reading the same data).
+            Use <span class="pill local">local</span> if you want speed, fewer requests, and smoother gameplay/UI updates while editing or running heavy loops.
+        </div>
+
+        <h2 class="section-title">Host your own server</h2>
+        <div class="card">
+            If you want full control and reliability, you can host the Server Storage backend yourself and point the extension to it with
+            <code>set server to [SERVER] server</code>. You can host this on any server that has static hosting and a database backend.
+            <div style="margin-top:10px;">
+                The server is open source here:
+                <a href="https://github.com/Ikelene/scratchStorageExtension/tree/main">https://github.com/Ikelene/scratchStorageExtension/tree/main</a>
+            </div>
+            <div style="margin-top:10px; color:#7f8c8d; font-size:14px;">
+                After hosting, generate an API key on your hosted domain, then use that key in PenguinMod.
+            </div>
+        </div>
+
+        <footer>
+            Server Storage Extension Docs
+            <br><br>
+            Open source backend:
+            <a href="https://github.com/Ikelene/scratchStorageExtension/tree/main">github.com/Ikelene/scratchStorageExtension</a>
+        </footer>
+    </div>
+
+    <script>
+        // ensure the api key button always points to "[currentURL]/apiKey.html"
+        (function () {
+            var base = window.location.href.split('#')[0].split('?')[0];
+            if (!base.endsWith('/')) {
+                base = base.substring(0, base.lastIndexOf('/') + 1);
+            }
+            document.getElementById('apiKeyLink').href = base + 'apiKey.html';
+        })();
+    </script>
+</body>
+</html>
