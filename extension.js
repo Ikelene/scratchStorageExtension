@@ -4,12 +4,37 @@
     class ServerStorage {
         constructor() {
             this.serverUrl = 'https://ikelene.dev/storage/';
-            this.apiKey = null;
+            this.apiKey = '';
             this.maxDataSize = 262144;
 
-            this.editMode = 'live'; // 'live' or 'local'
-            this.localCache = {};   // { key: value }
+            this.editMode = 'live'; /** @type {'live' | 'local'} */
+            this.localCache = new Map();
             this.dirtyKeys = new Set();
+        }
+
+        serialize() {
+            return {
+                serverUrl: this.serverUrl,
+                apiKey: this.apiKey,
+                editMode: this.editMode
+            };
+        }
+
+        deserialize(data) {
+            if (!data || typeof data !== 'object') return;
+
+            if (typeof data.serverUrl === 'string' && data.serverUrl.trim().length) {
+                const trimmed = data.serverUrl.trim();
+                this.serverUrl = trimmed.endsWith('/') ? trimmed : trimmed + '/';
+            }
+
+            if (typeof data.apiKey === 'string') {
+                this.apiKey = data.apiKey;
+            }
+
+            if (data.editMode === 'local' || data.editMode === 'live') {
+                this.editMode = data.editMode;
+            }
         }
 
         getInfo() {
@@ -19,7 +44,7 @@
                 color1: '#ff9bfd',
                 color2: '#ff9bfd',
                 color3: '#ff9bfd',
-                docsURI: this.serverUrl + 'apiKey.html',
+                docsURI: this.serverUrl + 'docs.html',
                 blocks: [
                     {
                         blockType: Scratch.BlockType.LABEL,
@@ -167,9 +192,12 @@
         }
 
         hasValidKey() {
-            return this.apiKey && this.apiKey.length > 0;
+            if (!this.apiKey || this.apiKey.length === 0) {
+                throw new Error('Missing API key');
+            }
+            return true;
         }
-        
+
         currentEditMode() {
             return this.editMode;
         }
@@ -180,9 +208,7 @@
         }
 
         async getAllKeys() {
-            if (!this.hasValidKey()) {
-                return 'need api key';
-            }
+            this.hasValidKey();
             try {
                 const res = await fetch(this.serverUrl + 'listKeys.php', {
                     method: 'POST',
@@ -196,16 +222,13 @@
                 const result = await res.json();
                 if (!result.success || !Array.isArray(result.keys)) return '[]';
                 return JSON.stringify(result.keys);
-            } catch (e) {
+            } catch (_) {
                 return '[]';
             }
         }
 
         async downloadCache() {
-            if (!this.hasValidKey()) {
-                console.warn('need api key to download cache');
-                return;
-            }
+            this.hasValidKey();
             try {
                 const res = await fetch(this.serverUrl + 'getAll.php', {
                     method: 'POST',
@@ -219,25 +242,21 @@
                 const result = await res.json();
                 if (!result.success || !Array.isArray(result.items)) return;
 
-                this.localCache = {};
+                this.localCache = new Map();
                 this.dirtyKeys = new Set();
 
                 for (const item of result.items) {
-                    this.localCache[item.key] = item.value;
+                    this.localCache.set(item.key, item.value);
                 }
-            } catch (e) {}
+            } catch (_) {}
         }
 
         async pushCache() {
-            if (!this.hasValidKey()) {
-                console.warn('need api key to push cache');
-                return;
-            }
-            const keysToPush = Array.from(this.dirtyKeys);
-            if (!keysToPush.length) return;
+            this.hasValidKey();
+            if (this.dirtyKeys.size === 0) return;
 
-            for (const key of keysToPush) {
-                const value = this.localCache[key];
+            for (const key of this.dirtyKeys) {
+                const value = this.localCache.get(key);
                 if (typeof value === 'undefined') continue;
 
                 const payload = {
@@ -248,7 +267,7 @@
                 };
 
                 try {
-                    await fetch(this.serverUrl + 'store.php', {
+                    const res = await fetch(this.serverUrl + 'store.php', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -256,28 +275,30 @@
                         },
                         body: JSON.stringify(payload)
                     });
-                } catch (e) {}
+                    if (res.status === 401) {
+                        throw new Error('Unauthorized: missing or invalid API key');
+                    }
+                } catch (_) {
+                    throw new Error('Server request failed');
+                }
             }
 
             this.dirtyKeys = new Set();
         }
 
         async saveToServer(args) {
-            if (!this.hasValidKey()) {
-                console.warn('You need to set an API key first. You can generate a key if you press the Open Documentation button');
-                return;
-            }
+            this.hasValidKey();
 
             const value = args.VALUE;
             const key = args.KEY;
             const size = new TextEncoder().encode(value).length;
 
             if (size > this.maxDataSize) {
-                return;
+                throw new Error('Data too large');
             }
 
             if (this.editMode === 'local') {
-                this.localCache[key] = value;
+                this.localCache.set(key, value);
                 this.dirtyKeys.add(key);
                 return;
             }
@@ -299,25 +320,27 @@
                     body: JSON.stringify(payload)
                 });
 
+                if (response.status === 401) {
+                    throw new Error('Unauthorized: missing or invalid API key');
+                }
+
                 const result = await response.json();
                 if (!result.success) {
-                    console.warn('You need to set an API key first. You can generate a key if you press the Open Documentation button');
+                    throw new Error('Server rejected request');
                 }
-            } catch (error) {
-                console.warn('You need to set an API key first. You can generate a key if you press the Open Documentation button');
+            } catch (_) {
+                throw new Error('Server request failed');
             }
         }
 
         async getFromServer(args) {
-            if (!this.hasValidKey()) {
-                return 'You need to set an API key first. You can generate a key if you press the Open Documentation button';
-            }
+            this.hasValidKey();
 
             const key = args.KEY;
 
             if (this.editMode === 'local') {
-                if (Object.prototype.hasOwnProperty.call(this.localCache, key)) {
-                    return this.localCache[key];
+                if (this.localCache.has(key)) {
+                    return this.localCache.get(key);
                 }
                 return '';
             }
@@ -336,7 +359,7 @@
                 });
 
                 if (response.status === 401) {
-                    return 'You need to set an API key first. You can generate a key if you press the Open Documentation button';
+                    throw new Error('Unauthorized: missing or invalid API key');
                 }
 
                 const result = await response.json();
@@ -344,20 +367,18 @@
                     return result.data.value || '';
                 }
                 return '';
-            } catch (error) {
-                return 'You need to set an API key first. You can generate a key if you press the Open Documentation button';
+            } catch (_) {
+                throw new Error('Server request failed');
             }
         }
 
         async serverDataExists(args) {
-            if (!this.hasValidKey()) {
-                return false;
-            }
+            this.hasValidKey();
 
             const key = args.KEY;
 
             if (this.editMode === 'local') {
-                return Object.prototype.hasOwnProperty.call(this.localCache, key);
+                return this.localCache.has(key);
             }
 
             try {
@@ -374,33 +395,30 @@
                 });
 
                 if (response.status === 401) {
-                    return false;
+                    throw new Error('Unauthorized: missing or invalid API key');
                 }
 
                 const result = await response.json();
                 return result.success && !!result.data;
-            } catch (error) {
-                return false;
+            } catch (_) {
+                throw new Error('Server request failed');
             }
         }
 
         async deleteFromServer(args) {
-            if (!this.hasValidKey()) {
-                console.warn('You need to set an API key first. You can generate a key if you press the Open Documentation button');
-                return;
-            }
+            this.hasValidKey();
 
             const key = args.KEY;
 
             if (this.editMode === 'local') {
-                delete this.localCache[key];
-                this.dirtyKeys.add(key); // optional: also push delete server-side later via dedicated delete api
+                this.localCache.delete(key);
+                this.dirtyKeys.add(key);
                 return;
             }
 
             try {
                 const response = await fetch(this.serverUrl + 'delete.php', {
-                    method: 'POST',
+                    method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json'
@@ -411,12 +429,16 @@
                     })
                 });
 
+                if (response.status === 401) {
+                    throw new Error('Unauthorized: missing or invalid API key');
+                }
+
                 const result = await response.json();
                 if (!result.success) {
-                    console.warn('Delete failed or key not found');
+                    throw new Error('Server rejected request');
                 }
-            } catch (error) {
-                console.warn('Delete failed or server unreachable');
+            } catch (_) {
+                throw new Error('Server request failed');
             }
         }
 
@@ -435,7 +457,7 @@
 
                 const result = await response.json();
                 return result.success === true && result.status === 'ok';
-            } catch (error) {
+            } catch (_) {
                 return false;
             }
         }
