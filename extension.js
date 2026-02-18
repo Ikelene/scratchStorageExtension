@@ -7,7 +7,8 @@
             this.apiKey = '';
             this.maxDataSize = 262144;
 
-            this.editMode = 'live'; /** @type {'live' | 'local'} */
+            /** @type {'live' | 'local'} */
+            this.editMode = 'live';
             this.localCache = new Map();
             this.dirtyKeys = new Set();
         }

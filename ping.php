@@ -9,18 +9,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once 'bootstrap.php';
+checkRateLimit($pdo);
+
+$action = 'health_ping';
 
 try {
     $stmt = $pdo->query('SELECT 1');
     $row = $stmt->fetch();
 
     if ($row) {
+        logApiAction($pdo, $action, 200);
         echo json_encode([
             'success' => true,
             'status' => 'ok'
         ]);
     } else {
         http_response_code(500);
+        logApiAction($pdo, $action, 500);
         echo json_encode([
             'success' => false,
             'status' => 'db_failed'
@@ -28,6 +33,7 @@ try {
     }
 } catch (Exception $e) {
     http_response_code(500);
+    logApiAction($pdo, $action, 500);
     echo json_encode([
         'success' => false,
         'status' => 'error',

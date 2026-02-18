@@ -9,11 +9,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once 'bootstrap.php';
+checkRateLimit($pdo);
+
+$action = 'list_keys';
 
 $input = json_decode(file_get_contents('php://input'), true);
 
 if (!isset($input['apiKey'])) {
     http_response_code(400);
+    logApiAction($pdo, $action, 400, $input);
     echo json_encode(['success' => false, 'error' => 'Missing API key']);
     exit;
 }
@@ -21,6 +25,7 @@ if (!isset($input['apiKey'])) {
 $user = getUserByApiKey($pdo, $input['apiKey']);
 if (!$user) {
     http_response_code(401);
+    logApiAction($pdo, $action, 401, $input);
     echo json_encode(['success' => false, 'error' => 'Invalid API key']);
     exit;
 }
@@ -33,12 +38,15 @@ try {
     $rows = $stmt->fetchAll();
     $keys = array_map(fn($r) => $r['key'], $rows);
 
+    logApiAction($pdo, $action, 200, $input);
     echo json_encode([
         'success' => true,
-        'keys' => $keys
+        'keys' => $keys,
+        'count' => count($keys)
     ]);
 } catch (Exception $e) {
     http_response_code(500);
+    logApiAction($pdo, $action, 500, $input);
     echo json_encode(['success' => false, 'error' => 'List failed']);
 }
 ?>

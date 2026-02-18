@@ -15,11 +15,15 @@ if ($_SERVER['REQUEST_METHOD'] !== 'DELETE') {
 }
 
 require_once 'bootstrap.php';
+checkRateLimit($pdo);
+
+$action = 'delete_key';
 
 $input = json_decode(file_get_contents('php://input'), true);
 
 if (!isset($input['apiKey']) || !isset($input['key'])) {
     http_response_code(400);
+    logApiAction($pdo, $action, 400, $input);
     echo json_encode(['success' => false, 'error' => 'Missing required fields: apiKey, key']);
     exit;
 }
@@ -27,6 +31,7 @@ if (!isset($input['apiKey']) || !isset($input['key'])) {
 $user = getUserByApiKey($pdo, $input['apiKey']);
 if (!$user) {
     http_response_code(401);
+    logApiAction($pdo, $action, 401, $input);
     echo json_encode(['success' => false, 'error' => 'Invalid API key']);
     exit;
 }
@@ -37,13 +42,18 @@ $key = substr(trim($input['key']), 0, 255);
 try {
     $stmt = $pdo->prepare('DELETE FROM data_items WHERE user_id = ? AND project_id IS NULL AND `key` = ?');
     $stmt->execute([$userId, $key]);
+    $deletedCount = $stmt->rowCount();
+    $success = $deletedCount > 0;
 
+    logApiAction($pdo, $action, $success ? 200 : 200, $input, null, null, null, null, ['deleted_count' => $deletedCount, 'key' => $key]);
     echo json_encode([
         'success' => true,
-        'deleted' => $stmt->rowCount()
+        'deleted' => $deletedCount,
+        'key' => $key
     ]);
 } catch (Exception $e) {
     http_response_code(500);
+    logApiAction($pdo, $action, 500, $input);
     echo json_encode(['success' => false, 'error' => 'Delete failed']);
 }
 ?>

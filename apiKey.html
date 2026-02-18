@@ -3,54 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Server Storage API Key Generator</title>
+    <title>Server Storage API</title>
     <style>
         * { box-sizing: border-box; }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-            max-width: 500px; 
-            margin: 40px auto; 
-            padding: 20px; 
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 500px;
+            margin: 40px auto;
+            padding: 20px;
             line-height: 1.6;
             background: #f8f9fa;
         }
         .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
         h1 { color: #2c3e50; margin-bottom: 10px; }
         .subtitle { color: #7f8c8d; margin-bottom: 30px; }
-        input { 
-            width: 100%; padding: 14px; font-size: 16px; border: 2px solid #e1e8ed; 
+        input {
+            width: 100%; padding: 14px; font-size: 16px; border: 2px solid #e1e8ed;
             border-radius: 8px; margin-bottom: 15px; transition: border-color 0.2s;
         }
         input:focus { outline: none; border-color: #3498db; }
-        button { 
-            width: 100%; padding: 14px; font-size: 16px; background: #3498db; 
-            color: white; border: none; border-radius: 8px; cursor: pointer; 
+        button {
+            width: 100%; padding: 14px; font-size: 16px; background: #3498db;
+            color: white; border: none; border-radius: 8px; cursor: pointer;
             transition: background 0.2s; font-weight: 500;
         }
         button:hover { background: #2980b9; }
         button:disabled { background: #bdc3c7; cursor: not-allowed; }
-        .warning { 
-            background: linear-gradient(135deg, #fff3cd, #ffeaa7); 
-            border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px; 
+        .warning {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px;
             margin: 25px 0; font-size: 14px;
         }
         .warning strong { color: #856404; }
-        .api-key { 
-            background: #2c3e50; color: #ecf0f1; padding: 20px; 
-            border-radius: 8px; word-break: break-all; font-family: monospace; 
+        .api-key {
+            background: #2c3e50; color: #ecf0f1; padding: 20px;
+            border-radius: 8px; word-break: break-all; font-family: monospace;
             font-size: 14px; margin: 20px 0; line-height: 1.4;
         }
         .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 12px; border-radius: 6px; }
         .copy-btn { background: #27ae60; margin-top: 10px; font-size: 14px; padding: 10px; }
         .copy-btn:hover { background: #219a52; }
+        .card { background: #f6f6f6; padding: 12px; border-radius: 8px; margin: 8px 0; }
+        .cookie-list { display: grid; gap: 8px; }
+        .cookie-item { padding: 12px; border-radius: 6px; background: white; border: 1px solid #e0e0e0; font-family: monospace; font-size: 13px; }
+        .cookie-name { font-weight: 600; color: #2c3e50; margin-bottom: 4px; }
+        .delete-btn { background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; float: right; }
+        .delete-btn:hover { background: #c0392b; }
         footer { text-align: center; margin-top: 30px; color: #95a5a6; font-size: 14px; }
+        .section-title { margin-top: 40px; font-weight: 600; color: #2c3e50; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Server Storage</h1>
-        <p class="subtitle">Generate your permanent API key for PenguinMod/Other mod projects</p>
-        
+        <h1>Generate an API key for Server Storage</h1>
+
         <div class="warning">
             <strong>NOTE:</strong><br>
             This API key is used to access <strong>ALL</strong> your project data that you store.<br>
@@ -58,9 +64,10 @@
             Changing this key will make <strong>all stored data permanently inaccessible.</strong>
         </div>
 
-        <input type="text" id="username" placeholder="Enter unique username (3-32 chars)" maxlength="32">
-        <button onclick="generateKey()">Generate API Key</button>
-        
+        <label for="username" style="display: block; margin-bottom: 8px; font-weight: 500; color: #2c3e50;">Give your key a name / your username</label>
+        <input type="text" id="username" placeholder="Enter unique name (3-32 chars)" maxlength="32">
+        <button id="generateBtn" onclick="generateKey()">Generate API Key</button>
+
         <div id="result" style="display: none;">
             <div class="success">
                 ✅ API key created successfully! Copy and save this immediately.
@@ -69,42 +76,113 @@
             <div id="apiKey" class="api-key"></div>
             <button class="copy-btn" onclick="copyKey()">Copy to Clipboard</button>
             <p style="font-size: 14px; color: #7f8c8d;">
-                <strong>Paste this into your PenguinMod extension settings.</strong><br>
-                Keep it safe - you will never be able to see it again!
+                <strong>Paste this into your PenguinMod set API key block.</strong><br>
             </p>
         </div>
+
+        <h3 class="section-title">Your Generated Keys</h3>
+        <div id="keysList" class="cookie-list"></div>
     </div>
 
     <script>
         let generatedKey = '';
-        
-        async function generateKey() {
-            const username = document.getElementById('username').value.trim();
-            const btn = event.target;
-            
-            if (!username) {
-                alert('Please enter a username');
+
+        // Cookie management functions
+        function setCookie(name, value, days = 365) {
+            const d = new Date();
+            d.setTime(d.getTime() + days*24*60*60*1000);
+            const expires = "expires=" + d.toUTCString();
+            document.cookie = name + "=" + encodeURIComponent(value) + ";" + expires + ";path=/";
+        }
+
+        function getCookie(name) {
+            const nameEq = name + "=";
+            const decoded = decodeURIComponent(document.cookie);
+            const ca = decoded.split(';');
+            for (let c of ca) {
+                c = c.trim();
+                if (c.indexOf(nameEq) === 0) return c.substring(nameEq.length);
+            }
+            return null;
+        }
+
+        function parseKeysFromCookie() {
+            const raw = getCookie('scratch_keys');
+            if (!raw) return [];
+            try {
+                return JSON.parse(raw);
+            } catch {
+                return [];
+            }
+        }
+
+        function saveKeysToCookie(keys) {
+            setCookie('scratch_keys', JSON.stringify(keys));
+        }
+
+        function deleteKey(name) {
+            const keys = parseKeysFromCookie();
+            const filtered = keys.filter(k => k.name !== name);
+            saveKeysToCookie(filtered);
+            renderKeys();
+        }
+
+        function renderKeys() {
+            const list = document.getElementById('keysList');
+            const keys = parseKeysFromCookie();
+            list.innerHTML = '';
+
+            if (keys.length === 0) {
+                list.innerHTML = '<div class="card" style="opacity:.8; text-align: center; color: #7f8c8d;">No keys saved yet. Generate one above!</div>';
                 return;
             }
-            
+
+            keys.forEach(keyObj => {
+                const div = document.createElement('div');
+                div.className = 'cookie-item';
+                div.innerHTML = `
+                    <div class="cookie-name">${keyObj.name}</div>
+                    <div style="word-break: break-all; font-size: 12px; color: #555;">${keyObj.key}</div>
+                    <button class="delete-btn" onclick="deleteKey('${keyObj.name.replace(/'/g, "\\'")}')">Delete</button>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        async function generateKey() {
+            const username = document.getElementById('username').value.trim();
+            const btn = document.getElementById('generateBtn');
+
+            if (!username) {
+                alert('Please enter a name/username');
+                return;
+            }
+
             btn.disabled = true;
             btn.textContent = 'Generating...';
-            
+
             try {
                 const response = await fetch('createApiKey.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username })
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (result.success) {
                     generatedKey = result.apiKey;
                     document.getElementById('apiKey').textContent = result.apiKey;
                     document.getElementById('result').style.display = 'block';
                     document.getElementById('username').style.display = 'none';
                     btn.style.display = 'none';
+
+                    // Save to cookies
+                    const keys = parseKeysFromCookie();
+                    keys.unshift({ name: username, key: result.apiKey });
+                    saveKeysToCookie(keys);
+                    renderKeys();
+
                 } else {
                     alert('Error: ' + result.error);
                 }
@@ -115,7 +193,7 @@
                 btn.textContent = 'Generate API Key';
             }
         }
-        
+
         function copyKey() {
             navigator.clipboard.writeText(generatedKey).then(() => {
                 const btn = event.target;
@@ -124,15 +202,23 @@
                 setTimeout(() => btn.textContent = original, 2000);
             });
         }
-        
+
         // Enter key support
         document.getElementById('username').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') generateKey();
         });
+
+        // Initialize on load
+        renderKeys();
     </script>
-    
+
     <footer>
-        Lost your API key? Contact the owner of this server about recovery.
+        Lost your API key? Contact Ikelene on Discord about data recovery.
+        <br>
+        <br>
+        Did you know the server is open source?
+        <br>
+        The github repo is at <a href="https://github.com/Ikelene/scratchStorageExtension/tree/main">https://github.com/Ikelene/scratchStorageExtension/tree/main</a>
     </footer>
 </body>
 </html>
