@@ -1,212 +1,150 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Server Storage Extension Docs</title>
-    <style>
-        * { box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 650px;
-            margin: 40px auto;
-            padding: 20px;
-            line-height: 1.6;
-            background: #f8f9fa;
-        }
-        .container {
-            background: white;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        }
-        h1 { color: #2c3e50; margin-bottom: 10px; }
-        .subtitle { color: #7f8c8d; margin-bottom: 30px; }
-        .card {
-            background: #f6f6f6;
-            padding: 16px;
-            border-radius: 10px;
-            margin: 12px 0;
-            border: 1px solid #eaeaea;
-        }
-        .warning {
-            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
-            border: 1px solid #ffeaa7;
-            border-radius: 8px;
-            padding: 18px;
-            margin: 20px 0;
-            font-size: 14px;
-        }
-        .warning strong { color: #856404; }
-        .pill {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 600;
-            border: 1px solid #e1e8ed;
-            background: #ffffff;
-            color: #2c3e50;
-        }
-        .pill.live { border-color: #b7e0ff; background: #eaf6ff; color: #1f5f88; }
-        .pill.local { border-color: #d7f7df; background: #ecfff1; color: #1f7a3f; }
-
-        .api-key {
-            background: #2c3e50;
-            color: #ecf0f1;
-            padding: 14px;
-            border-radius: 8px;
-            word-break: break-all;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            font-size: 13px;
-            margin: 10px 0;
-            line-height: 1.4;
-        }
-        a { color: #3498db; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        .btn {
-            display: inline-block;
-            padding: 12px 14px;
-            background: #3498db;
-            color: white;
-            border-radius: 8px;
-            font-weight: 600;
-            text-decoration: none;
-            transition: background 0.2s;
-        }
-        .btn:hover { background: #2980b9; text-decoration: none; }
-        .section-title { margin-top: 34px; font-weight: 700; color: #2c3e50; }
-        ul { margin: 10px 0 0 18px; }
-        code {
-            background: #eef2f6;
-            padding: 2px 6px;
-            border-radius: 6px;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            font-size: 0.95em;
-        }
-        footer {
-            text-align: center;
-            margin-top: 30px;
-            color: #95a5a6;
-            font-size: 14px;
-        }
-        .two-col {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 12px;
-        }
-        @media (min-width: 680px) {
-            .two-col { grid-template-columns: 1fr 1fr; }
-        }
-    </style>
+<link rel="icon" type="image/png" href="/favicon.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Server Storage Extension - Docs</title>
+<style>
+  body {
+    font-family: Verdana, Arial, sans-serif;
+    background: #f4f4f8;
+    color: #333;
+    padding: 30px 20px 60px;
+    max-width: 680px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 1.4rem;
+    color: #222;
+    margin-bottom: 4px;
+  }
+  h2 {
+    font-size: 1.05rem;
+    color: #0f8a7e;
+    margin: 0 0 10px;
+  }
+  p.sub {
+    color: #777;
+    margin-top: 0;
+  }
+  .box {
+    background: #fff;
+    border: 1px solid #e0e0e8;
+    border-radius: 14px;
+    padding: 20px;
+    margin-top: 18px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  }
+  a.button {
+    display: inline-block;
+    padding: 10px 20px;
+    background: #0f8a7e;
+    color: #fff;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+  a.button:hover {
+    background: #0c7268;
+  }
+  code {
+    background: #f4f4f8;
+    border: 1px solid #d5d5e0;
+    border-radius: 5px;
+    padding: 1px 6px;
+    color: #0f8a7e;
+    font-size: 0.88em;
+  }
+  ol, ul {
+    padding-left: 20px;
+  }
+  li {
+    margin-bottom: 6px;
+  }
+  table {
+    border-collapse: separate;
+    border-spacing: 12px 0;
+    width: 100%;
+    margin-top: 8px;
+  }
+  td {
+    background: #f0faf8;
+    border: 1px solid #cfeae5;
+    border-radius: 10px;
+    padding: 14px;
+    vertical-align: top;
+    font-size: 0.9rem;
+    width: 50%;
+  }
+  td h3 {
+    margin: 0 0 8px;
+    font-size: 0.95rem;
+    color: #0f8a7e;
+  }
+  .warn {
+    margin-top: 16px;
+    font-size: 0.85rem;
+    color: #b06a1a;
+    background: #fff6e8;
+    border: 1px solid #f0d9a8;
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  @media (max-width: 520px) {
+    table, tbody, tr, td { display: block; width: 100%; }
+    table { border-spacing: 0; }
+    td { margin-bottom: 12px; }
+  }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>Server Storage Extension</h1>
-        <div class="subtitle">
-            Store and retrieve key/value data from a Server Storage backend, with two editing modes for either live syncing or fast local caching.
-        </div>
+  <div class="box">
+    <h1>Server Storage Extension</h1>
+    <p class="sub">Docs for the Scratch/TurboWarp extension that syncs project data to ikelene.net.</p>
+    <a class="button" href="apiKey.html">Generate API Key</a>
+  </div>
 
-        <div class="warning">
-            <strong>Important:</strong><br>
-            Your API key grants access to all data stored under that key.<br>
-            If you lose or change it, your existing stored data may become inaccessible.
-        </div>
+  <div class="box">
+    <h2>Getting started</h2>
+    <ol>
+      <li>Click <strong>Generate API Key</strong> above, give it a friendly name, and copy the key it gives you.</li>
+      <li>In your Scratch/TurboWarp project, load the <strong>Server Storage</strong> extension and use the <code>set api key [APIKEY]</code> block with your key.</li>
+      <li>Use <code>store [VALUE] as [KEY]</code> / <code>get [KEY]</code> to read and write data, or switch editing modes below for bulk work.</li>
+    </ol>
+  </div>
 
-        <div class="card">
-            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <a class="btn" id="apiKeyLink" href="./apiKey.html">Create / manage API key</a>
-                <span style="color:#7f8c8d; font-size:14px;">(opens <code>[currentURL]/apiKey.html</code>)</span>
-            </div>
-        </div>
+  <div class="box">
+    <h2>Live vs. Cached editing</h2>
+    <p>The extension has two editing modes, switched with the <code>switch to [MODE] editing</code> block. Check the active mode with <code>current editing mode</code>.</p>
 
-        <h2 class="section-title">API keys</h2>
-        <div class="card">
-            API keys identify your storage “account” on the server. Every request includes your key so the server knows which data belongs to you.
-            <div class="api-key">example: paste-your-api-key-here</div>
-            In PenguinMod, set it once using the extension’s <code>set API key to [APIKEY]</code> block.
-        </div>
+    <table>
+      <tr>
+        <td class="live">
+          <h3>Live mode (default)</h3>
+          <p>Every get/store/delete block talks to the server directly, in real time.</p>
+          <ul>
+            <li>Always up to date, no stale data</li>
+            <li>No extra steps needed</li>
+            <li>Slower — each block call is a network request</li>
+          </ul>
+        </td>
+        <td class="live">
+          <h3>Local (cached) mode</h3>
+          <p>Data is pulled into a local cache once, then reads/writes hit that cache instantly.</p>
+          <ul>
+            <li>Fast — no network delay per block</li>
+            <li>Requires <code>download all keys to local cache</code> first</li>
+            <li>Changes stay local until <code>push local changes to server</code></li>
+          </ul>
+        </td>
+      </tr>
+    </table>
 
-        <h2 class="section-title">Editing modes</h2>
-        <div class="two-col">
-            <div class="card">
-                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-                    <strong>Live</strong>
-                    <span class="pill live">live</span>
-                </div>
-                <div style="margin-top:10px;">
-                    Live mode talks to the server on every read/write:
-                    <ul>
-                        <li><code>save</code> sends immediately.</li>
-                        <li><code>get</code> fetches the latest server value.</li>
-                        <li><code>delete</code> deletes on the server immediately.</li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="card">
-                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-                    <strong>Local</strong>
-                    <span class="pill local">local</span>
-                </div>
-                <div style="margin-top:10px;">
-                    Local mode caches values in memory and avoids constant networking:
-                    <ul>
-                        <li><code>save</code> writes to local cache only.</li>
-                        <li><code>get</code> reads from local cache only.</li>
-                        <li>Nothing changes on the server until you push.</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <h2 class="section-title">Using local editing</h2>
-        <div class="card">
-            A simple recommended workflow:
-            <ul>
-                <li>Set your API key.</li>
-                <li>Switch to <code>local</code> editing.</li>
-                <li>Run <code>download all keys to local cache</code> to load the current server state into the cache.</li>
-                <li>Do lots of reads/writes locally while your project runs.</li>
-                <li>When ready, run <code>push local changes to server</code> to sync modified keys.</li>
-            </ul>
-        </div>
-
-        <h2 class="section-title">When to use which</h2>
-        <div class="card">
-            Use <span class="pill live">live</span> if you need the latest shared values immediately (for example, multiple users/projects reading the same data).
-            Use <span class="pill local">local</span> if you want speed, fewer requests, and smoother gameplay/UI updates while editing or running heavy loops.
-        </div>
-
-        <h2 class="section-title">Host your own server</h2>
-        <div class="card">
-            If you want full control and reliability, you can host the Server Storage backend yourself and point the extension to it with
-            <code>set server to [SERVER] server</code>. You can host this on any server that has static hosting and a database backend.
-            <div style="margin-top:10px;">
-                The server is open source here:
-                <a href="https://github.com/Ikelene/scratchStorageExtension/tree/main">https://github.com/Ikelene/scratchStorageExtension/tree/main</a>
-            </div>
-            <div style="margin-top:10px; color:#7f8c8d; font-size:14px;">
-                After hosting, generate an API key on your hosted domain, then use that key in PenguinMod.
-            </div>
-        </div>
-
-        <footer>
-            Server Storage Extension Docs
-            <br><br>
-            Open source backend:
-            <a href="https://github.com/Ikelene/scratchStorageExtension/tree/main">github.com/Ikelene/scratchStorageExtension</a>
-        </footer>
+    <div class="warn">
+      In cached mode, nothing you write is saved to the server until you run <code>push local changes to server</code>. If your project closes before pushing, those changes are lost. Live mode never has this risk.
     </div>
-
-    <script>
-        (function () {
-            var base = window.location.href.split('#')[0].split('?')[0];
-            if (!base.endsWith('/')) {
-                base = base.substring(0, base.lastIndexOf('/') + 1);
-            }
-            document.getElementById('apiKeyLink').href = base + 'apiKey.html';
-        })();
-    </script>
+  </div>
 </body>
 </html>
