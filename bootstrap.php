@@ -76,3 +76,81 @@ function logApiRequest($pdo, $apiKey, $username, $action, $requestData = null, $
         // logging is never allowed to break the request
     }
 }
+
+/**
+ * Detects whether an incoming key/value pair is an uploaded file
+ * (binary data, base64 data URI, raw encoded file, or file extension).
+ */
+function isFileUpload(string $key, string $value): bool {
+    // 1. Block file extensions in the key
+    $fileExtensions = '/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|pdf|zip|rar|tar|gz|7z|exe|bin|iso|dmg|deb|rpm|mp3|mp4|wav|avi|mov|mkv|ogg|flac|docx?|xlsx?|pptx?|php|phtml|phar|sh|bat|cmd|apk)$/i';
+    if (preg_match($fileExtensions, $key)) {
+        return true;
+    }
+
+    // 2. Block base64 Data URIs (e.g. data:image/png;base64,...)
+    if (preg_match('/^data:[a-zA-Z0-9\/\-+.]+;base64,/i', $value)) {
+        return true;
+    }
+
+    // 3. Block raw binary data containing null bytes
+    if (str_contains($value, "\0")) {
+        return true;
+    }
+
+    // 4. Magic byte inspection for binary files (PNG, JPEG, GIF, PDF, ZIP, RAR, EXE, ELF)
+    $magicSignatures = [
+        "\x89PNG\r\n\x1a\n", // PNG
+        "\xFF\xD8\xFF",       // JPEG
+        "GIF87a",             // GIF
+        "GIF89a",             // GIF
+        "%PDF-",              // PDF
+        "PK\x03\x04",         // ZIP (and DOCX/XLSX/JAR/APK)
+        "PK\x05\x06",         // ZIP empty archive
+        "Rar!\x1a\x07",       // RAR
+        "\x7FELF",            // ELF (Linux binary)
+        "MZ",                 // DOS / Windows PE executable
+        "7z\xBC\xAF\x27\x1C", // 7-Zip
+    ];
+
+    foreach ($magicSignatures as $sig) {
+        if (str_starts_with($value, $sig)) {
+            return true;
+        }
+    }
+
+    // 5. Detect base64-encoded files (inspect header bytes after decode)
+    $cleanValue = trim($value);
+    if (strlen($cleanValue) >= 64 && preg_match('/^[a-zA-Z0-9\/+=\r\n]+$/', substr($cleanValue, 0, 128))) {
+        $decodedHeader = base64_decode(substr($cleanValue, 0, 64), true);
+        if ($decodedHeader !== false && strlen($decodedHeader) > 4) {
+            foreach ($magicSignatures as $sig) {
+                if (str_starts_with($decodedHeader, $sig)) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    // 6. Native Fileinfo check if available
+    if (function_exists('finfo_open')) {
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        if ($finfo !== false) {
+            $detectedMime = finfo_buffer($finfo, substr($value, 0, 2048));
+            finfo_close($finfo);
+
+            // Anything outside standard text formats is blocked
+            $allowedTextTypes = [
+                'text/plain',
+                'application/json',
+                'text/csv',
+            ];
+
+            if ($detectedMime && !in_array($detectedMime, $allowedTextTypes, true)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
