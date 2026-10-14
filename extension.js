@@ -13,6 +13,32 @@
             this.dirtyKeys = new Set();
         }
 
+        /**
+         * Detects whether an item looks like a file upload (by extension, data-URI, or binary content).
+         */
+        isFilePayload(key, value) {
+            const keyStr = String(key || '');
+            const valStr = String(value || '');
+
+            // 1. Check for file extensions in the key
+            const fileExtensions = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|pdf|zip|rar|tar|gz|7z|exe|bin|iso|dmg|mp3|mp4|wav|avi|mov|docx?|xlsx?|pptx?|php|html?|css|js)$/i;
+            if (fileExtensions.test(keyStr)) {
+                return true;
+            }
+
+            // 2. Check for base64 Data URIs (e.g., data:image/png;base64,...)
+            if (/^data:[a-zA-Z0-9\/\-+.]+;base64,/i.test(valStr)) {
+                return true;
+            }
+
+            // 3. Check for raw null bytes (binary files)
+            if (valStr.indexOf('\0') !== -1) {
+                return true;
+            }
+
+            return false;
+        }
+
         serialize() {
             return {
                 serverUrl: this.serverUrl,
@@ -260,11 +286,15 @@
                 const value = this.localCache.get(key);
                 if (typeof value === 'undefined') continue;
 
+                if (this.isFilePayload(key, value)) {
+                    throw new Error(`File uploads are not allowed (key: ${key})`);
+                }
+
                 const payload = {
                     apiKey: this.apiKey,
                     key: key,
-                    value: value,
-                    mimeType: 'application/json'
+                    value: String(value),
+                    mimeType: 'text/plain'
                 };
 
                 try {
@@ -272,6 +302,72 @@
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (res.status === 401) {
+                        throw new Error('Unauthorized: missing or invalid API key');
+                    }
+
+                    const result = await res.json();
+                    if (!result.success) {
+                        throw new Error(result.error || 'Server rejected request');
+                    }
+                } catch (e) {
+                    throw new Error(e.message || 'Server request failed');
+                }
+            }
+
+            this.dirtyKeys = new Set();
+        }
+
+        async saveToServer(args) {
+            this.hasValidKey();
+
+            const value = String(args.VALUE);
+            const key = String(args.KEY);
+
+            // Block file uploads directly on the client
+            if (this.isFilePayload(key, value)) {
+                throw new Error('File uploads are not allowed');
+            }
+
+            const size = new TextEncoder().encode(value).length;
+            if (size > this.maxDataSize) {
+                throw new Error('Data too large');
+            }
+
+            if (this.editMode === 'local') {
+                this.localCache.set(key, value);
+                this.dirtyKeys.add(key);
+                return;
+            }
+
+            const payload = {
+                apiKey: this.apiKey,
+                key: key,
+                value: value,
+                mimeType: 'text/plain'
+            };
+
+            try {
+                const response = await fetch(this.serverUrl + 'store.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.status === 401) {
+                    throw new Error('Unauthorized: missing or invalid API key');
+                }
+
+                const result = await response.json();
+                if (!result.success) {ent-Type': 'application/json',
                             'Accept': 'application/json'
                         },
                         body: JSON.stringify(payload)
